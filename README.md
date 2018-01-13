@@ -37,4 +37,3 @@ For protecting a Web App that is registered with AAD, add an `aad.json` file to 
     }
 }
 ```
-# aad-auth

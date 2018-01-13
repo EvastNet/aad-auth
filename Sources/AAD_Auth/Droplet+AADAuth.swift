@@ -12,9 +12,15 @@ extension Droplet{
             throw AADError.configIncomplete
         }
         
-        let root = "/"
+        var home: String
+        if let root = config["aad", "authentication", "root"]?.string{
+            home = "/\(root)"
+        }else{
+            home = "/"
+        }
+        
         post(redirectEndpoint){ request in
-            return Response(redirect: root)
+            return Response(redirect: home)
         }
         
         get("logout"){ request in
