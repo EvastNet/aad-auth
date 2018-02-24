@@ -96,12 +96,14 @@ extension AADUser: NodeRepresentable {
     
     public func makeNode(in context: Context?) throws -> Node {
         var node = Node(context)
+        try node.set("id", self.id)
         try node.set("token", self.rawToken)
         try node.set("name", self.name)
         try node.set("email", self.email)
         try node.set("initials", self.initials)
         try node.set("givenName", self.givenName)
         try node.set("familyName", self.familyName)
+        try node.set("groups", self.groups)
         return node
         
     }
