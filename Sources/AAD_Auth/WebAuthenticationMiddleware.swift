@@ -3,10 +3,12 @@ import Vapor
 import Sessions
 import JWT
 import Foundation
+import Cache
 
 public final class WebAuthenticationMiddleware: Middleware {
     
     let client: ClientFactoryProtocol
+    let cache: CacheProtocol
     let redirectUri: String
     let redirectEndpoint: String
     let clientID: String
@@ -17,8 +19,9 @@ public final class WebAuthenticationMiddleware: Middleware {
     let loginUrl: String
     let v2Endpoint: Bool
     
-    public init(_ client: ClientFactoryProtocol, _ clientID: String, _ tenantID: String, _ redirectEndpoint: String,  _ instance: String, _ jwksUrl: String, _ domain: String, _ v2Endpoint: Bool = false) {
+    public init(_ client: ClientFactoryProtocol,_ cache: CacheProtocol, _ clientID: String, _ tenantID: String, _ redirectEndpoint: String,  _ instance: String, _ jwksUrl: String, _ domain: String, _ v2Endpoint: Bool = false) {
         self.client = client
+        self.cache = cache
         self.clientID = clientID
         self.redirectEndpoint = redirectEndpoint
         self.tenantID = tenantID
@@ -56,6 +59,8 @@ public final class WebAuthenticationMiddleware: Middleware {
                 try validateUser(user)
             } catch  {
                 //Invalid User: Redirect to loginUrl
+                let session = try req.assertSession()
+                try session.data.set("intendedEndpoint", req.uri.path)
                 return Response(redirect: loginUrl)
             }
             //Valid user - continue middleware chain
@@ -72,6 +77,8 @@ public final class WebAuthenticationMiddleware: Middleware {
                 }
             }
             //Else send to login
+            let session = try req.assertSession()
+            try session.data.set("intendedEndpoint", req.uri.path)
             return Response(redirect: loginUrl)
         }
     }
@@ -104,6 +111,7 @@ public final class WebAuthenticationMiddleware: Middleware {
 extension WebAuthenticationMiddleware: ConfigInitializable {
     public convenience init(config: Config) throws {
         let client = try config.resolveClient()
+        let cache = try config.resolveCache()
         guard let cID: String = config["aad", "authentication", "clientId"]?.string,
             let tID: String = config["aad", "authentication", "tenantId"]?.string,
             let rEndpoint: String = config["aad", "authentication", "redirectEndpoint"]?.string,
@@ -111,11 +119,11 @@ extension WebAuthenticationMiddleware: ConfigInitializable {
             let domain: String = config["aad", "authentication", "domain"]?.string,
             let jUrl: String = config["aad", "authentication", "jwksUrl"]?.string,
             let v2Endpoint = config["aad", "v2Endpoint"]?.bool
-        else {
+            else {
                 throw AADError.configIncomplete
         }
         
-        self.init(client, cID, tID, rEndpoint, instance, jUrl, domain, v2Endpoint)
+        self.init(client, cache, cID, tID, rEndpoint, instance, jUrl, domain, v2Endpoint)
     }
 }
 
